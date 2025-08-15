@@ -1,44 +1,47 @@
-const fetch = require('node-fetch');
-const fs = require('fs');
-const vm = require('vm');
+import fs from 'fs';
+import fetch from 'node-fetch';
+import vm from 'vm';
 
-const baseUrl = 'https://play.pokemonshowdown.com/data/'; // ベースURL
-const files = {
-  'pokedex.json': 'pokedex.json',
-  'moves.json': 'moves.json',
-  'abilities.js': 'abilities.json',
-  'items.js': 'items.json',
-  'typechart.js': 'typechart.json'
-};
+const baseUrl = 'https://play.pokemonshowdown.com/data/';
+const files = [
+  'pokedex.json',
+  'moves.json',
+  'abilities.js',
+  'items.js',
+  'typechart.js'
+];
 
-async function fetchAndSave(url, filename) {
+async function fetchAndSaveFile(fileName) {
+  const url = baseUrl + fileName;
   console.log(`Fetching: ${url}`);
+
   const res = await fetch(url);
   const text = await res.text();
-
   let data;
-  if (url.endsWith('.js')) {
-    const sandbox = { exports: {} }; // exportsを初期化
+
+  if (fileName.endsWith('.json')) {
+    data = JSON.parse(text);
+  } else if (fileName.endsWith('.js')) {
+    // Node.js の VM で exports を評価
+    const sandbox = { exports: {} };
     vm.createContext(sandbox);
     vm.runInContext(text, sandbox);
-    // 必要なデータをsandboxから取得
-    data = sandbox.exports || sandbox.Abilities || sandbox.Items || sandbox.TypeChart;
-  } else {
-    data = JSON.parse(text); // JSONデータの場合は直接解析
+    // exports に入っている最初のオブジェクトを取得
+    data = Object.values(sandbox.exports)[0] || sandbox.exports;
   }
 
-  fs.writeFileSync(`data/${filename}`, JSON.stringify(data, null, 2)); // ファイルに保存
-  console.log(`Saved: data/${filename}`);
+  fs.writeFileSync(`data/${fileName.replace('.js', '.json')}`, JSON.stringify(data, null, 2));
+  console.log(`Saved: data/${fileName.replace('.js', '.json')}`);
 }
 
-async function main() {
-  if (!fs.existsSync('data')) {
-    fs.mkdirSync('data'); // データフォルダを作成
+(async () => {
+  if (!fs.existsSync('data')) fs.mkdirSync('data');
+  for (const file of files) {
+    await fetchAndSaveFile(file);
   }
-  for (const file in files) {
-    await fetchAndSave(baseUrl + file, files[file]); // ファイルを順次処理
-  }
-}
+})();
 
-main().catch(console.error); // エラーハンドリング
+
+
+
 
