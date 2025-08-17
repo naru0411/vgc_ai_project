@@ -1,15 +1,21 @@
 // encode_pokemon.js
-const fs = require('fs');
-const path = require('path');
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// ---------- パス処理（ESM対応） ----------
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ---------- helpers ----------
 function toId(text) {
   return String(text || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
+
 function warnMissing(kind, name) {
   console.warn(`⚠️ Missing ${kind}: "${name}"`);
   return null;
 }
+
 function loadJSON(file) {
   return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', file), 'utf8'));
 }
@@ -36,10 +42,10 @@ function buildLookup(baseMap, dataset) {
   // 2) dataset の id / name もキーに追加（id→id、正規化name→id）
   for (const id in dataset) {
     const entry = dataset[id];
-    out[id] = id;                 // すでにIDが渡されたケース
+    out[id] = id;
     if (entry && entry.name) {
-      out[entry.name] = id;       // 表示名
-      out[toId(entry.name)] = id; // 表示名の正規化
+      out[entry.name] = id;
+      out[toId(entry.name)] = id;
     }
   }
   return out;
@@ -61,10 +67,9 @@ function resolve(map, name, kind) {
  * @param {Object} pokemon - { species, ability, item, moves: string[] }
  * @returns {Object} - { speciesId, typeIds, abilityId, itemId, moveIds }
  */
-function encodePokemon(pokemon) {
+export function encodePokemon(pokemon) {
   // 種族ID（正規化＆リカバリ）
   let speciesId = resolve(speciesLookup, pokemon.species, 'species');
-  // もし name→id で取れなくても、toId(species) が pokedex のキーならそれを採用
   if (!speciesId) {
     const guess = toId(pokemon.species);
     if (pokedex[guess]) speciesId = guess;
@@ -83,7 +88,7 @@ function encodePokemon(pokemon) {
   return { speciesId, typeIds, abilityId, itemId, moveIds };
 }
 
-module.exports = { encodePokemon };
+
 
 // --- 単体テスト（必要なら有効化） ---
 // const examplePokemon = {
